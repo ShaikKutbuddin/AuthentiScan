@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fake Account Detector</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: linear-gradient(135deg, #89f7fe, #66a6ff);
+      background-size: cover;
+      background-position: center;
+      transition: background 1s ease-in-out, filter 0.8s ease-in-out;
+      overflow: hidden;
+    }
+    body.fade { filter: blur(10px) brightness(0.7); }
+
+    .brand-watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 70vw;
+      height: calc(70vw / 2.33);
+      max-width: 1000px;
+      max-height: 430px;
+      transform: translate(-50%, -50%);
+      opacity: 0.12;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      user-select: none;
+    }
+    .brand-watermark img { max-height: 60%; margin-bottom: 10px; }
+    .brand-watermark span {
+      font-size: 3em;
+      font-weight: bold;
+      color: rgb(248, 248, 248);
+      text-shadow: 0 0 12px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: rgb(248, 246, 246);
+      text-shadow: 2px 2px 12px rgba(0,0,0,0.6);
+      font-size: 2.2em;
+      z-index: 2;
+      text-align: center;
+    }
+    .platforms, .types { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; z-index: 2; }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: rgba(5, 3, 3, 0.2);
+      color: rgb(18, 10, 10);
+      font-size: 16px;
+      backdrop-filter: blur(8px);
+      transition: transform 0.3s, background 0.4s;
+    }
+    button:hover { transform: scale(1.08); background: rgba(87, 71, 71, 0.35); }
+
+    .input-area {
+      display: none;
+      margin-top: 20px;
+      text-align: center;
+      background: rgba(255,255,255,0.85);
+      padding: 20px;
+      border-radius: 16px;
+      width: 360px;
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+      z-index: 2;
+    }
+    .input-area.show { display: block; opacity: 1; transform: translateY(0) scale(1); }
+
+    input[type="text"] {
+      width: 280px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+
+    #result { margin-top: 20px; font-weight: bold; font-size: 18px; }
+
+    /* Profile Card */
+    .profile-card {
+      position: fixed;
+      top: 0;
+      right: -380px; /* hidden initially */
+      height: 100%;
+      width: 360px;
+      overflow-y: auto;
+      background: rgba(255,255,255,0.15); /* keep original background */
+      backdrop-filter: blur(15px) saturate(180%);
+      -webkit-backdrop-filter: blur(15px) saturate(180%);
+      border-radius: 20px 0 0 20px;
+      padding: 25px;
+      box-shadow: -4px 0 30px rgba(0,0,0,0.3);
+      transition: right 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s ease;
+      z-index: 100;
+      opacity: 0;
+    }
+    .profile-card.show {
+      right: 0;
+      opacity: 1;
+    }
+    .profile-card h3 {
+      margin: 15px 0 0px;
+      font-size: 20px;
+      text-align: center;
+      color: black; /* black text */
+      text-shadow: none;
+    }
+    .profile-card p {
+      margin: 12px 0;
+      font-size: 16px;
+      color: black; /* black text */
+    }
+    .profile-card button {
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.2);
+      color: black; /* black text */
+      font-weight: bold;
+      font-size: 16px;
+      border: 1px solid rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
+    }
+    .profile-card button:hover {
+      transform: scale(1.05);
+      background: rgba(255,255,255,0.35);
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    }
+
+    .profile-card .close-btn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 50%;
+      font-size: 18px;
+      color: black; /* black text */
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .profile-card .close-btn:hover {
+      background: rgba(255,255,255,0.45);
+    }
+
+    .chart-container {
+      margin-left: 20px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 15px;
+    }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="brand-watermark" id="brandWatermark">
+    <img src="" alt="Logo">
+    <span></span>
+  </div>
+
+  <h1>Fake Account Detector</h1>
+
+  <div class="platforms" id="platformButtons">
+    <button onclick="selectPlatform('instagram')"><img src="insta.webp" alt="Instagram" style="height:20px; vertical-align:middle; margin-right:6px;">Instagram</button>
+    <button onclick="selectPlatform('snapchat')"><img src="unnamed.png" alt="Snapchat" style="height:20px; vertical-align:middle; margin-right:6px;">Snapchat</button>
+    <button onclick="selectPlatform('facebook')"><img src="face.webp" alt="Facebook" style="height:20px; vertical-align:middle; margin-right:6px;">Facebook</button>
+    <button onclick="selectPlatform('x')"><img src="x.webp" alt="X" style="height:20px; vertical-align:middle; margin-right:6px;">X</button>
+  </div>
+
+  <div class="types" id="typeSelection" style="display:none;">
+    <button onclick="selectType('url')">Use URL</button>
+    <button onclick="selectType('id')">Use ID</button>
+  </div>
+
+  <div class="input-area" id="inputArea">
+    <p id="selectedPlatform"></p>
+    <p id="selectedType"></p>
+    <div id="inputField"></div>
+    <br>
+    <button onclick="checkAccount()">Check</button>
+    <br><br>
+    <button onclick="changePlatform()">🔄 Change Platform</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="profile-card" id="profileCard">
+    <button class="close-btn" onclick="closeProfileCard()">✖</button>
+    <h3>Profile Tracking</h3>
+    <p><b>Followers:</b> <span id="followers"></span></p>
+    <p><b>Following:</b> <span id="following"></span></p>
+    <p><b>Posts:</b> <span id="posts"></span></p>
+    <p><b>Irregular Activity:</b> <span id="activity"></span></p>
+    <button onclick="toggleGraph()">📊 View Graphs</button>
+    <div class="chart-container" id="chartContainer" style="display:none;">
+      <canvas id="followersChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    let platform = '';
+    let inputType = '';
+    let followers = 0, fakeFollowers = 0;
+    let chartInstance = null;
+
+    const reportLinks = {
+      instagram: 'https://help.instagram.com/contact/383679321740945',
+      snapchat: 'https://support.snapchat.com/en-US/i-need-help',
+      facebook: 'https://www.facebook.com/help/contact/274459462613911',
+      x: 'https://help.twitter.com/forms/impersonation'
+    };
+
+    const bgGradients = {
+      instagram: "linear-gradient(135deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5)",
+      snapchat: "linear-gradient(135deg, #fffc00, #ffe066)",
+      facebook: "linear-gradient(135deg, #3b5998, #8b9dc3)",
+      x: "linear-gradient(135deg, #000000, #434343)"
+    };
+
+    const logos = {
+      instagram: "https://upload.wikimedia.org/wikipedia/commons/9/95/Instagram_logo_2022.svg",
+      snapchat: "unnamed.png",
+      facebook: "https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg",
+      x: "X.webp"
+    };
+
+    function selectPlatform(name) {
+      platform = name;
+      inputType = '';
+      document.body.classList.add("fade");
+      setTimeout(() => {
+        document.body.style.background = bgGradients[name];
+        updateWatermark(name);
+        document.body.classList.remove("fade");
+      }, 600);
+
+      let buttons = document.querySelectorAll("#platformButtons button");
+      buttons.forEach(btn => {
+        if (btn.innerText.toLowerCase().includes(name)) btn.style.display = "inline-block";
+        else btn.style.display = "none";
+      });
+
+      if(platform==='snapchat') {
+        selectType('id');
+        document.getElementById('typeSelection').style.display='none';
+      }
+      else {
+        document.getElementById('typeSelection').style.display='flex';
+        document.getElementById('inputArea').classList.remove("show");
+        document.getElementById('inputArea').style.display="none";
+      }
+
+      document.getElementById('result').innerText='';
+      document.getElementById("profileCard").classList.remove("show");
+    }
+
+    function updateWatermark(name){
+      const wm = document.getElementById("brandWatermark");
+      wm.querySelector("img").src = logos[name];
+      wm.querySelector("span").innerText = name.charAt(0).toUpperCase()+name.slice(1);
+      wm.style.display="flex";
+    }
+
+    function selectType(type){
+      inputType=type;
+      let inputArea = document.getElementById('inputArea');
+      inputArea.style.display='block';
+      setTimeout(()=>inputArea.classList.add("show"),50);
+
+      document.getElementById('selectedPlatform').innerText='Platform: '+platform.charAt(0).toUpperCase()+platform.slice(1);
+      document.getElementById('selectedType').innerText='Input Type: '+(inputType==='url'?'Profile URL':'User ID');
+      document.getElementById('result').innerText='';
+
+      let inputField=document.getElementById('inputField');
+      inputField.innerHTML=`<input type="text" id="profileInput" placeholder="Enter ${inputType==='url'?'Profile URL':'User ID'}">`;
+    }
+
+    function checkAccount(){
+      const value=document.getElementById('profileInput').value.trim();
+      if(!value){ alert('Please enter the required information.'); return; }
+
+      const isFake = value.toLowerCase().includes('fake');
+      const resultDiv=document.getElementById('result');
+
+      followers=Math.floor(Math.random()*50000+100);
+
+      if(isFake){
+        resultDiv.innerHTML=`❌ Fake account detected! <a href="${reportLinks[platform]}" target="_blank">Report here</a>`;
+        resultDiv.style.color='red';
+        fakeFollowers = Math.floor(followers*0.7 + Math.random()*followers*0.3);
+        document.getElementById("activity").innerText="Yes";
+      } else {
+        resultDiv.innerText='✅ This account seems real.';
+        resultDiv.style.color='green';
+        fakeFollowers = Math.floor(followers*Math.random()*0.3);
+        document.getElementById("activity").innerText=Math.random()>0.5?"Yes":"No";
+      }
+
+      document.getElementById("followers").innerText=followers;
+      document.getElementById("following").innerText=Math.floor(Math.random()*5000+10);
+      document.getElementById("posts").innerText=Math.floor(Math.random()*2000+1);
+
+      document.getElementById("profileCard").classList.add("show");
+      document.getElementById("chartContainer").style.display="none";
+    }
+
+    function changePlatform(){
+      document.getElementById("profileCard").classList.remove("show");
+      let buttons=document.querySelectorAll("#platformButtons button");
+      buttons.forEach(btn=>btn.style.display="inline-block");
+      document.getElementById('typeSelection').style.display="none";
+      document.getElementById('inputArea').style.display="none";
+      document.getElementById('result').innerText='';
+      platform=''; inputType='';
+      document.body.style.background="linear-gradient(135deg, #89f7fe, #66a6ff)";
+      document.getElementById("brandWatermark").style.display="none";
+    }
+
+    function closeProfileCard(){
+      document.getElementById("profileCard").classList.remove("show");
+    }
+
+    function toggleGraph(){
+      const container = document.getElementById('chartContainer');
+      if(container.style.display==='none'){
+        container.style.display='block';
+        const ctx = document.getElementById('followersChart').getContext('2d');
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Real Followers','Fake Followers'],
+            datasets:[{
+              data:[followers-fakeFollowers,fakeFollowers],
+              backgroundColor:['#4caf50','#f44336']
+            }]
+          },
+          options:{ responsive:true, plugins:{ legend:{position:'bottom'}, title:{display:true, text:'Followers Composition'} } }
+        });
+      } else {
+        container.style.display='none';
+      }
+    }
+  </script>
+</body>
+</html>
