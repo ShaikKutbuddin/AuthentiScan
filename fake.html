@@ -1,367 +1,299 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Fake Account Detector</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-
-    #logo-screen {
-      position: fixed;
-      top:0; left:0; width:100vw; height:100vh;
-      background: #4d3535;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 9999;
-      overflow: hidden;
-      transition: opacity 0.7s ease;
-    }
-    #logo-screen.fadeout { opacity: 0; pointer-events: none; }
-    #logo-screen img {
-      width: 400px; height: auto;
-      transition: transform 0.6s ease;
-    }
-    #logo-screen.zoom { animation: zoomIn 0.7s forwards; }
-    @keyframes zoomIn { 0% { transform: scale(1); } 100% { transform: scale(3); opacity: 0; } }
-
-    body {
-      font-family: 'Times New Roman', Times, serif;
-      margin: 0; min-height: 100vh;
-      display: flex; align-items: center; justify-content: center; flex-direction: column;
-      background: linear-gradient(135deg, #89f7fe, #66a6ff);
-      background-size: cover; background-position: center;
-      transition: background 1s ease-in-out, filter 0.8s ease-in-out;
-      overflow: hidden;
-    }
-    body.fade { filter: blur(10px) brightness(0.7); }
-
-    .brand-watermark {
-      position: fixed; top: 50%; left: 50%;
-      width: 70vw; height: calc(70vw / 2.33);
-      max-width: 1000px; max-height: 430px;
-      transform: translate(-50%, -50%);
-      opacity: 0.12;
-      display: none;
-      flex-direction: column; align-items: center; justify-content: center;
-      pointer-events: none; user-select: none;
-    }
-    .brand-watermark img { max-height: 60%; margin-bottom: 10px; }
-    .brand-watermark span {
-      font-size: 3em; font-weight: bold; color: rgb(248, 248, 248);
-      text-shadow: 0 0 12px rgba(0,0,0,0.5);
-    }
-
-    h1 {
-      margin-bottom: 20px; color: rgb(248, 246, 246);
-      text-shadow: 2px 2px 12px rgba(0,0,0,0.6);
-      font-size: 2.2em; z-index: 2; text-align: center;
-    }
-    .platforms, .types { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; z-index: 2; }
-
-    button {
-      padding: 12px 24px; border: none; border-radius: 12px;
-      cursor: pointer; background: rgba(5, 3, 3, 0.2); color: rgb(18, 10, 10);
-      font-size: 16px; backdrop-filter: blur(8px);
-      transition: transform 0.3s, background 0.4s;
-    }
-    button:hover { transform: scale(1.08); background: rgba(87, 71, 71, 0.35); }
-
-    .input-area {
-      display: none; margin-top: 20px; text-align: center;
-      background: rgba(255,255,255,0.85);
-      padding: 20px; border-radius: 16px; width: 360px;
-      opacity: 0; transform: translateY(30px) scale(0.95);
-      transition: opacity 0.7s ease, transform 0.7s ease;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-      z-index: 2; margin-left: auto; margin-right: auto;
-    }
-    .input-area.show { display: block; opacity: 1; transform: translateY(0) scale(1); }
-
-    input[type="text"] {
-      width: 280px; padding: 12px; border: 1px solid #ccc;
-      border-radius: 8px; margin-bottom: 12px; font-size: 15px;
-      display: block; margin-left: auto; margin-right: auto;
-    }
-
-    #result { margin-top: 20px; font-weight: bold; font-size: 18px; }
-
-    .profile-card {
-      position: fixed; top: 0; right: -380px;
-      height: 100%; width: 360px; overflow-y: auto;
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(15px) saturate(180%);
-      border-radius: 20px 0 0 20px;
-      padding: 25px; box-shadow: -4px 0 30px rgba(0,0,0,0.3);
-      transition: right 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.5s ease;
-      z-index: 100; opacity: 0;
-    }
-    .profile-card.show { right: 0; opacity: 1; }
-    .profile-card h3 { margin: 15px 0 0px; font-size: 20px; text-align: center; color: black; }
-    .profile-card p { margin: 12px 0; font-size: 16px; color: black; }
-
-    .profile-card button {
-      padding: 12px; border-radius: 12px;
-      background: rgba(255,255,255,0.2);
-      color: black; font-weight: bold; font-size: 16px;
-      border: 1px solid rgba(0,0,0,0.3);
-      backdrop-filter: blur(10px); cursor: pointer;
-      transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
-    }
-    .profile-card button:hover {
-      transform: scale(1.05);
-      background: rgba(255,255,255,0.35);
-      box-shadow: 0 0 10px rgba(0,0,0,0.4);
-    }
-
-    .profile-card .close-btn {
-      position: absolute; top: 10px; left: 10px;
-      background: rgba(255,255,255,0.2); border: none;
-      border-radius: 50%; font-size: 18px; color: black;
-      cursor: pointer; transition: background 0.3s;
-    }
-    .profile-card .close-btn:hover { background: rgba(255,255,255,0.45); }
-
-    .profile-card button[onclick="toggleGraph()"] {
-      display: block; margin: 12px auto;
-    }
-
-    .chart-container {
-      margin-top: 15px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 12px; padding: 15px;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fake Account Detector — Circular Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root { --bg:#0f1724; --card:#0b1220; --muted:#94a3b8; --accent:#6ee7b7; --danger:#fb7185; --glass: rgba(255,255,255,0.03); color-scheme: dark; }
+*{box-sizing:border-box}
+body { font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial; margin:0; background:linear-gradient(180deg,#071023 0%, #07182a 100%); color:#e6eef8; padding:28px }
+.app { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:420px 1fr; gap:20px }
+header { grid-column:1/-1; display:flex; align-items:center; gap:16px }
+.logo { width:56px;height:56px;border-radius:12px; background:linear-gradient(135deg,#0ea5a9,#6366f1); display:flex;align-items:center;justify-content:center;font-weight:700 }
+h1 {font-size:20px;margin:0}
+p.lead, .small {margin:0;color:var(--muted);font-size:13px}
+.card { background:var(--card); border-radius:14px; padding:18px; box-shadow: 0 6px 18px rgba(2,6,23,0.7); }
+form .row {display:flex; gap:8px; margin-bottom:10px}
+label {display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+input,select { width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:var(--glass); color:inherit }
+select#platform { background-color: #0f1724; color: #e6eef8; border: 1px solid rgba(255, 255, 255, 0.1); }
+button.cta { background:linear-gradient(90deg,var(--accent),#60a5fa); border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600 }
+button.ghost { background:transparent; border:1px solid rgba(255,255,255,0.06); padding:8px 12px; border-radius:10px; cursor:pointer }
+.stats { display: flex; gap: 10px; margin-top: 12px; justify-content: space-around; }
+.stat { background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent); padding: 12px; border-radius: 10px; text-align: center; width: 120px; }
+.big {font-size:20px; font-weight:700}
+.results {display:flex; gap:16px}
+.left-panel {min-height:300px}
+.right-panel { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+footer { grid-column:1/-1; margin-top:18px; text-align:center; color:var(--muted); font-size:13px }
+#avatar { width:72px; height:72px; border-radius:12px; background:linear-gradient(90deg,#0ea5a9,#60a5fa); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:20px; color:#fff; background-size:cover; background-position:center; overflow:hidden; }
+.chart-container { width: 300px; height: 300px; position: relative; margin-top: 20px; display: none; }
+@media (max-width:980px){ .app{grid-template-columns:1fr} .results{flex-direction:column} .left-panel{order:2} }
+</style>
 </head>
 <body>
-
-  <div id="logo-screen" onclick="showMainApp()">
-    <img src="logo.png" alt="AuthentiScan Logo" />
+<div class="app">
+<header>
+  <div class="logo">
+    <img src="logo.png" alt="Logo" style="width: 56px; height: 56px; border-radius: 12px;">
   </div>
-
-  <div id="app-content" style="display:none; width: 100%; max-width: 900px; padding: 20px;">
-    <div class="brand-watermark" id="brandWatermark">
-      <img src="" alt="Logo" />
-      <span></span>
-    </div>
-
-    <h1>Fake Account Detector</h1>
-
-    <div class="platforms" id="platformButtons">
-      <button onclick="selectPlatform('instagram')">
-        <img src="insta.webp" alt="Instagram" style="height:20px; vertical-align:middle; margin-right:6px;">Instagram
-      </button>
-      <button onclick="selectPlatform('snapchat')">
-        <img src="unnamed.png" alt="Snapchat" style="height:20px; vertical-align:middle; margin-right:6px;">Snapchat
-      </button>
-      <button onclick="selectPlatform('facebook')">
-        <img src="face.webp" alt="Facebook" style="height:20px; vertical-align:middle; margin-right:6px;">Facebook
-      </button>
-      <button onclick="selectPlatform('x')">
-        <img src="x.webp" alt="X" style="height:20px; vertical-align:middle; margin-right:6px;">X
-      </button>
-    </div>
-
-    <div class="types" id="typeSelection" style="display:none;">
-      <button onclick="selectType('url')">Use URL</button>
-      <button onclick="selectType('id')">Use ID</button>
-    </div>
-
-    <div class="input-area" id="inputArea">
-      <p id="selectedPlatform"></p>
-      <p id="selectedType"></p>
-      <div id="inputField"></div>
-      <br />
-      <button onclick="checkAccount()">Check</button>
-      <br /><br />
-      <button onclick="changePlatform()">🔄 Change Platform</button>
-    <div id="checkResult" style="text-align: center; margin-top: 10px;"></div>
-    </div>
-
-    <div id="result"></div>
-
-    <div class="profile-card" id="profileCard">
-      <button class="close-btn" onclick="closeProfileCard()">✖</button>
-      <h3>Profile Tracking</h3>
-      <p><b>Followers:</b> <span id="followers"></span></p>
-      <p><b>Following:</b> <span id="following"></span></p>
-      <p><b>Posts:</b> <span id="posts"></span></p>
-      <p><b>Irregular Activity:</b> <span id="activity"></span></p>
-      <button onclick="toggleGraph()">📊 View Graphs</button>
-      <div class="chart-container" id="chartContainer" style="display:none;">
-        <canvas id="followersChart"></canvas>
-      </div>
-    </div>
+  <div>
+    <h1>AuthentiScan</h1>
+    <p class="lead">Fake Account Detector</p>
   </div>
+</header>
 
-  <script>
-    let platform = '';
-    let inputType = '';
-    let chartInstance = null;
+<section class="card">
+<form id="analyzeForm" onsubmit="return false;">
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+<label for="platform" style="min-width:60px">Platform</label>
+<select id="platform">
+<option value="">Select Platform</option>
+<option value="twitter">X</option>
+<option value="instagram">Instagram</option>
+<option value="facebook">Facebook</option>
+<option value="tiktok">TikTok</option>
+<option value="snapchat">Snapchat</option>
+</select>
+</div>
+<div class="row">
+<div style="flex:1">
+<label for="username">Username or URL</label>
+<input id="username" placeholder="Enter username or profile URL" />
+</div>
+</div>
+<div style="display:flex;gap:8px;margin-top:12px">
+<button type="button" id="retrieveBtn" class="cta">Retrieve Details</button>
+<button type="button" id="clearBtn" class="ghost">Clear</button>
+<button type="button" id="reportBtn" class="cta" style="background: #6366f1;">Report</button>
+</div>
 
-    const reportLinks = {
-      instagram: 'https://www.instagram.com',
-      snapchat: 'https://support.snapchat.com/en-US/i-need-help',
-      facebook: 'https://www.facebook.com/help/contact/274459462613911',
-      x: 'https://help.twitter.com/forms/impersonation',
-    };
+<div class="row">
+<div style="flex:1">
+<label for="has_pic">Profile Pic</label>
+<select id="has_pic">
+<option value="1">Yes</option>
+<option value="0">No</option>
+</select>
+</div>
+<div style="flex:1">
+<label for="followers">Followers</label>
+<input id="followers" type="number" min="0" value="0" />
+</div>
+</div>
 
-    const bgGradients = {
-      instagram: 'linear-gradient(135deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5)',
-      snapchat: 'linear-gradient(135deg, #fffc00, #ffe066)',
-      facebook: 'linear-gradient(135deg, #3b5998, #8b9dc3)',
-      x: 'linear-gradient(135deg, #000000, #434343)',
-    };
+<div class="row">
+<div style="flex:1">
+<label for="following">Following</label>
+<input id="following" type="number" min="0" value="0" />
+</div>
+<div style="flex:1">
+<label for="posts">Total posts</label>
+<input id="posts" type="number" min="0" value="0" />
+</div>
+</div>
 
-    const logos = {
-      instagram: 'https://upload.wikimedia.org/wikipedia/commons/9/95/Instagram_logo_2022.svg',
-      snapchat: 'unnamed.png',
-      facebook: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg',
-      x: 'x.webp',
-    };
+<div class="row">
+<div style="flex:1">
+<label for="recent30">Posts last 30 days</label>
+<input id="recent30" type="number" min="0" value="0" />
+</div>
+<div style="flex:1">
+<label for="avgLikes">Avg Likes/Comments</label>
+<input id="avgLikes" type="number" min="0" value="0" />
+</div>
+</div>
 
-    function showMainApp() {
-      const logoScreen = document.getElementById('logo-screen');
-      logoScreen.classList.add('zoom');
-      setTimeout(() => {
-        logoScreen.classList.add('fadeout');
-        setTimeout(() => {
-          logoScreen.style.display = 'none';
-          document.getElementById('app-content').style.display = 'block';
-        }, 700);
-      }, 700);
-    }
+<div class="row">
+<div style="flex:1">
+<label for="created">Account Created</label>
+<input type="date" id="created" />
+</div>
+<div style="flex:1">
+<label for="bio">Bio</label>
+<input id="bio" placeholder="Bio text" />
+</div>
+</div>
+<p class="small" style="margin-top:10px">This is frontend-only — integrate with backend APIs for real results.</p>
+</form>
+</section>
 
-    function selectPlatform(name) {
-      platform = name; inputType = '';
-      document.body.classList.add('fade');
-      setTimeout(() => {
-        document.body.style.background = bgGradients[name];
-        updateWatermark(name);
-        document.body.classList.remove('fade');
-      }, 600);
+<div class="right-panel">
+<div class="results">
+<div class="left-panel" style="width:300px">
+<div style="display:flex;align-items:center;gap:12px;">
+<div id="avatar">U</div>
+<div>
+<div id="displayName" style="font-weight:700">@username</div>
+<div id="platformLabel" style="font-size:12px;color:var(--muted)"></div>
+</div>
+</div>
+<div class="stats">
+<div class="stat">
+<div class="big" id="followersDisplay">0</div>
+<div class="small">Followers</div>
+</div>
+<div class="stat">
+<div class="big" id="followingDisplay">0</div>
+<div class="small">Following</div>
+</div>
+<div class="stat">
+<div class="big" id="postsDisplay">0</div>
+<div class="small">Posts</div>
+</div>
+</div>
+</div>
+<div class="right-panel">
+<div class="chart-container">
+<canvas id="activityChart"></canvas>
+</div>
+<div id="scoreDetails" class="reasons">
+<ul id="reasonsList"></ul>
+</div>
+</div>
+</div>
+</div>
 
-      let buttons = document.querySelectorAll('#platformButtons button');
-      buttons.forEach(btn => {
-        if (btn.innerText.toLowerCase().includes(name)) btn.style.display = 'inline-block';
-        else btn.style.display = 'none';
-      });
+<footer>
+<p class="small">© 2025 Fake Account Detector — All rights reserved</p>
+</footer>
+</div>
 
-      if (platform === 'snapchat') {
-        selectType('id');
-        document.getElementById('typeSelection').style.display = 'none';
-      } else {
-        document.getElementById('typeSelection').style.display = 'flex';
-        document.getElementById('inputArea').classList.remove('show');
-        document.getElementById('inputArea').style.display = 'none';
-      }
+<script>
+function seedFromString(str){let h=2166136261>>>0;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h>>>0;}
+function mulberry32(a){return function(){var t=a+=0x6D2B79F5;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296}}
 
-      document.getElementById('result').innerText = '';
-      document.getElementById('profileCard').classList.remove('show');
-    }
-
-    function updateWatermark(name) {
-      const wm = document.getElementById('brandWatermark');
-      wm.querySelector('img').src = logos[name];
-      wm.querySelector('span').innerText = name.charAt(0).toUpperCase() + name.slice(1);
-      wm.style.display = 'flex';
-    }
-
-    function selectType(type) {
-      inputType = type;
-      const inputArea = document.getElementById('inputArea');
-      document.getElementById('selectedPlatform').innerText = 'Platform: ' + platform.charAt(0).toUpperCase() + platform.slice(1);
-      document.getElementById('selectedType').innerText = 'Using: ' + (type === 'url' ? 'URL' : 'ID');
-
-      document.getElementById('inputField').innerHTML =
-        `<input id="inputValue" type="text" placeholder="Enter profile ${type.toUpperCase()}" />`;
-
-      inputArea.style.display = 'block';
-      setTimeout(() => inputArea.classList.add('show'), 10);
-
-      document.getElementById('result').innerText = '';
-      document.getElementById('checkResult').innerHTML = ''; 
-      document.getElementById('profileCard').classList.remove('show');
-    }
-
-    function changePlatform() {
-      platform = ''; inputType = '';
-      document.body.style.background = 'linear-gradient(135deg, #89f7fe, #66a6ff)';
-      document.getElementById('platformButtons').querySelectorAll('button').forEach(btn => btn.style.display = 'inline-block');
-      document.getElementById('typeSelection').style.display = 'none';
-      document.getElementById('inputArea').classList.remove('show');
-      document.getElementById('inputArea').style.display = 'none';
-      document.getElementById('result').innerText = '';
-      document.getElementById('profileCard').classList.remove('show');
-      document.body.classList.remove('fade');
-
-      const wm = document.getElementById('brandWatermark');
-      wm.style.display = 'none';
-      wm.querySelector('img').src = '';
-      wm.querySelector('span').innerText = '';
-      document.getElementById('checkResult').innerHTML = ''; 
-    }
-
-    function checkAccount() {
-  const input = document.getElementById('inputValue');
-  if (!input || !input.value.trim()) { alert('Please enter a value!'); return; }
-  const value = input.value.trim().toLowerCase();
-
-  const resultContainer = document.getElementById('checkResult');
-
-  if (value.includes('fan')) {
-    resultContainer.innerHTML = `
-      <p style="color:red; font-weight:bold;">🚨 The account is FAKE! 🚨</p>
-      <button onclick="window.open('${reportLinks[platform]}', '_blank')">Report here</button>
-    `;
-  } else {
-    resultContainer.innerHTML = `
-      <p style="color:green; font-weight:bold;">✅ The account seems legitimate.</p>
-    `;
-  }
-
-  document.getElementById('result').innerHTML = '';
-
-  document.getElementById('followers').innerText = Math.floor(Math.random()*5000);
-  document.getElementById('following').innerText = Math.floor(Math.random()*1000);
-  document.getElementById('posts').innerText = Math.floor(Math.random()*300);
-  document.getElementById('activity').innerText = Math.random() > 0.5 ? "Yes" : "No";
-
-  document.getElementById('profileCard').classList.add('show');
+function extractUsername(platform,input){
+  if(!input)return'';let s=input.trim().replace(/\s+/g,'');s=s.replace(/\/+$/,'');
+  try{if(/^https?:\/\//i.test(s)){
+    const u=new URL(s);
+    if(u.hostname.includes('instagram.com')){const seg=u.pathname.split('/').filter(Boolean);return(seg[0]==='p'||seg[0]==='tv')?(seg[1]||''):(seg[0]||'')}
+    if(u.hostname.includes('twitter.com')||u.hostname.includes('x.com')){const seg=u.pathname.split('/').filter(Boolean);return seg[0]||''}
+    if(u.hostname.includes('facebook.com')){if(u.pathname.includes('profile.php')){const id=u.searchParams.get('id');return id||''}const seg=u.pathname.split('/').filter(Boolean);return seg[0]||''}
+    if(u.hostname.includes('tiktok.com')){const seg=u.pathname.split('/').filter(Boolean);if(seg[0]&&seg[0].startsWith('@'))return seg[0].replace('@','');return seg[0]||''}
+    if(u.hostname.includes('snapchat.com')){const seg=u.pathname.split('/').filter(Boolean);if(seg[0]==='add'&&seg[1])return seg[1];return seg.pop()||''}
+    const parts=u.pathname.split('/').filter(Boolean);return parts.pop()||''}}catch(e){}
+  if(s.startsWith('@'))return s.slice(1);if(s.includes('/')){const parts=s.split('/').filter(Boolean);return parts.pop()}return s
 }
 
-    function closeProfileCard() {
-      document.getElementById('profileCard').classList.remove('show');
-    }
+const ctx = document.getElementById('activityChart').getContext('2d');
+let chart;
 
-    function toggleGraph() {
-      const container = document.getElementById('chartContainer');
-      if (container.style.display === 'block') {
-        container.style.display = 'none';
-      } else {
-        container.style.display = 'block';
-        drawGraph();
+document.getElementById('retrieveBtn').addEventListener('click', () => {
+  const platform = document.getElementById('platform').value;
+  const rawInput = document.getElementById('username').value.trim();
+  if (!platform || !rawInput) { alert('Please select a platform and enter a username.'); return; }
+
+  const username = extractUsername(platform, rawInput);
+  if (!username) { alert('Could not parse username.'); return; }
+
+  const seed = seedFromString(platform + '|' + username);
+  const rnd = mulberry32(seed);
+
+  // random legit/fake signals
+  const legit = Math.floor(rnd() * 5) + 1;
+  const fake = Math.floor(rnd() * 5) + 1;
+  const riskScore = Math.round((fake / (legit + fake)) * 100);
+
+  // realistic random data for display
+  const followers = Math.floor(rnd() * 100000) + 50;
+  const following = Math.floor(rnd() * 5000) + 10;
+  const posts = Math.floor(rnd() * 1200) + 5;
+  const recent30 = Math.floor(rnd() * 40);
+  const avgLikes = Math.floor(rnd() * 2000) + 10;
+
+  const yearsAgo = Math.floor(rnd() * 8) + 2;
+  const createdDate = new Date();
+  createdDate.setFullYear(createdDate.getFullYear() - yearsAgo);
+  const isoDate = createdDate.toISOString().split('T')[0];
+
+  const bios = [
+    "Travel ✈️ | Coffee ☕ | Coding 💻","Sharing my creative journey 🎨","Foodie | Dreamer | Content Creator 🍕📸",
+    "Music addict 🎧 | Chill vibes only 🌊","Tech enthusiast 🚀 | Always learning","Be kind. Stay humble. 🌱"
+  ];
+  const bio = bios[Math.floor(rnd() * bios.length)];
+
+  document.getElementById('followers').value = followers;
+  document.getElementById('following').value = following;
+  document.getElementById('posts').value = posts;
+  document.getElementById('recent30').value = recent30;
+  document.getElementById('avgLikes').value = avgLikes;
+  document.getElementById('created').value = isoDate;
+  document.getElementById('bio').value = bio;
+
+  document.getElementById('followersDisplay').textContent = followers.toLocaleString();
+  document.getElementById('followingDisplay').textContent = following.toLocaleString();
+  document.getElementById('postsDisplay').textContent = posts.toLocaleString();
+  document.getElementById('displayName').textContent = '@' + username;
+  document.getElementById('platformLabel').textContent = platform;
+  document.getElementById('avatar').textContent = username[0].toUpperCase();
+
+  // render chart
+  document.querySelector('.chart-container').style.display = 'block';
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Legit Signals', 'Fake Signals'],
+      datasets: [{
+        data: [legit, fake],
+        backgroundColor: ['#10b981', '#fb7185'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { labels: { color: '#e6eef8' } },
+        tooltip: {
+          callbacks: {
+            label: function(context){
+              let val = context.raw;
+              if(context.label==='Fake Signals'){
+                return `${context.label}: ${val} (Risk Score: ${riskScore}%)`;
+              }
+              return `${context.label}: ${val}`;
+            }
+          }
+        }
       }
     }
+  });
+});
 
-    function drawGraph() {
-      const ctx = document.getElementById('followersChart');
-      if (chartInstance) chartInstance.destroy();
+// Report button
+document.getElementById('reportBtn').addEventListener('click', () => {
+  const platform = document.getElementById('platform').value;
+  const username = extractUsername(platform, document.getElementById('username').value.trim());
+  if (!platform || !username) { alert('Please fill platform and username first.'); return; }
 
-      chartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Fake Signals', 'Legit Signals'],
-          datasets: [{
-            data: [Math.floor(Math.random()*80)+10, Math.floor(Math.random()*80)+10],
-            backgroundColor: ['#ff4d4d', '#4CAF50']
-          }]
-        },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-      });
-    }
-  </script>
+  const urls = {
+    twitter: `https://x.com/${username}`,
+    instagram: `https://instagram.com/${username}`,
+    facebook: `https://facebook.com/${username}`,
+    tiktok: `https://www.tiktok.com/@${username}`,
+    snapchat: `https://www.snapchat.com/add/${username}`
+  };
+
+  window.open(urls[platform], '_blank');
+});
+
+// Clear button
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('analyzeForm').reset();
+  document.getElementById('followersDisplay').textContent = '0';
+  document.getElementById('followingDisplay').textContent = '0';
+  document.getElementById('postsDisplay').textContent = '0';
+  document.getElementById('displayName').textContent = '@username';
+  document.getElementById('platformLabel').textContent = '';
+  document.getElementById('avatar').textContent = 'U';
+  document.querySelector('.chart-container').style.display = 'none';
+  if(chart) chart.destroy();
+});
+</script>
 </body>
 </html>
