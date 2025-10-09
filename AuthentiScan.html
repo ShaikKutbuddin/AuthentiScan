@@ -201,11 +201,11 @@ document.getElementById('retrieveBtn').addEventListener('click', () => {
   const riskScore = Math.round((fake / (legit + fake)) * 100);
 
   // realistic random data for display
-  const followers = Math.floor(rnd() * 100000) + 50;
-  const following = Math.floor(rnd() * 5000) + 10;
-  const posts = Math.floor(rnd() * 1200) + 5;
+  const followers = Math.floor(rnd() * 1000) + 50;
+  const following = Math.floor(rnd() * 500) + 10;
+  const posts = Math.floor(rnd() * 50) + 5;
   const recent30 = Math.floor(rnd() * 40);
-  const avgLikes = Math.floor(rnd() * 2000) + 10;
+  const avgLikes = Math.floor(rnd() * 200) + 10;
 
   const yearsAgo = Math.floor(rnd() * 8) + 2;
   const createdDate = new Date();
@@ -297,3 +297,4 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 </script>
 </body>
 </html>
+
